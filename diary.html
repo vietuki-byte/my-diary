@@ -529,8 +529,9 @@ function renderCalendar() {
     let cls = "cal-inner";
     if(hasRecord) cls += " has-record";
     else if(isSelected) cls += " selected";
+    const styleStr = !hasRecord ? "color:"+color : "";
     calHTML += `<div class="cal-cell" data-ds="${ds}">
-      <div class="${cls}" style="${!hasRecord?`color:${color}`:"}">${d}</div>
+      <div class="${cls}" style="${styleStr}">${d}</div>
     </div>`;
   }
   calHTML += `</div>`;
