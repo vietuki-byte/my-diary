@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>日記</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    background: #f2f2f7;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    max-width: 430px;
+    margin: 0 auto;
+    overflow: hidden;
+    position: relative;
+  }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* ヘッダー */
+  #header {
+    background: #fff;
+    border-bottom: 1px solid #e8e8e8;
+    padding: 12px 16px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  #header-title { font-weight: 800; font-size: 18px; color: #222; }
+  #btn-search { background: none; border: none; font-size: 20px; color: #555; }
+
+  /* コンテンツ */
+  #content { flex: 1; overflow-y: auto; padding-bottom: 70px; }
+
+  /* タブ */
+  #tab-bar {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    background: #fff; border-top: 1px solid #e8e8e8;
+    display: flex; height: 60px; z-index: 40;
+  }
+  .tab-btn {
+    flex: 1; background: none; border: none;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 2px; color: #999; font-size: 10px;
+  }
+  .tab-btn.active { color: #00BCD4; font-weight: 700; }
+  .tab-btn span.icon { font-size: 18px; }
+
+  /* FAB */
+  #fab {
+    position: fixed; bottom: 72px; right: calc(50% - 215px + 16px);
+    width: 56px; height: 56px; border-radius: 50%;
+    background: #00BCD4; border: none; color: #fff; font-size: 24px;
+    box-shadow: 0 4px 16px rgba(0,188,212,0.4);
+    display: flex; align-items: center; justify-content: center; z-index: 50;
+  }
+  @media(max-width:430px){ #fab { right: 16px; } }
+
+  /* カード */
+  .entry-card {
+    background: #fff; padding: 14px 16px; margin-bottom: 2px;
+    display: flex; gap: 14px; cursor: pointer; transition: background 0.15s;
+  }
+  .entry-card:hover { background: #f5feff; }
+  .date-col { min-width: 48px; text-align: center; }
+  .day-label { font-size: 11px; color: #00BCD4; font-weight: 600; }
+  .day-num {
+    font-size: 32px; font-weight: 700; color: #00BCD4;
+    border-radius: 50%; width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center; margin: 2px auto;
+  }
+  .day-num.today { background: #00BCD4; color: #fff; }
+  .time-label { font-size: 10px; color: #aaa; }
+  .entry-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; color: #222; }
+  .entry-body {
+    font-size: 13px; color: #666; white-space: pre-wrap;
+    overflow: hidden; display: -webkit-box;
+    -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  }
+  .month-header {
+    padding: 6px 16px; font-size: 12px; color: #888;
+    background: #f2f2f7; font-weight: 600;
+  }
+
+  /* カレンダー */
+  #cal-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 20px; background: #fff;
+  }
+  #cal-nav button { background: none; border: none; font-size: 20px; color: #00BCD4; }
+  #cal-nav span { font-weight: 700; font-size: 16px; }
+  #cal-dow {
+    display: grid; grid-template-columns: repeat(7,1fr); background: #fff;
+  }
+  #cal-dow div { text-align: center; font-size: 11px; padding: 4px 0; font-weight: 600; }
+  #cal-grid {
+    display: grid; grid-template-columns: repeat(7,1fr); background: #fff; gap: 1px;
+  }
+  .cal-cell { text-align: center; padding: 4px 0; cursor: pointer; }
+  .cal-inner {
+    width: 34px; height: 34px; margin: 0 auto; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .cal-inner.has-record { background: #00BCD4; color: #fff; font-weight: 700; }
+  .cal-inner.selected { border: 2px solid #00BCD4; }
+
+  /* 検索 */
+  #search-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; background: #fff; border-bottom: 1px solid #eee;
+    flex-shrink: 0;
+  }
+  #search-input {
+    flex: 1; border: none; outline: none; font-size: 16px;
+    background: #f2f2f7; border-radius: 10px; padding: 8px 12px;
+    font-family: inherit;
+  }
+  #btn-search-cancel { background: none; border: none; color: #00BCD4; font-weight: 600; font-size: 15px; }
+
+  /* 詳細 */
+  #detail-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; background: #fff; border-bottom: 1px solid #eee; flex-shrink: 0;
+  }
+  #detail-header button { background: none; border: none; color: #00BCD4; font-size: 15px; }
+  #detail-body { overflow-y: auto; flex: 1; padding: 20px 16px; }
+  #detail-title { font-size: 22px; font-weight: 800; margin-bottom: 12px; }
+  #detail-text { font-size: 15px; line-height: 1.8; white-space: pre-wrap; color: #333; }
+  #detail-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  #detail-photos img { width: calc(50% - 4px); border-radius: 10px; object-fit: cover; aspect-ratio: 1; }
+
+  /* モーダル */
+  #modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4); align-items: flex-end; z-index: 100;
+  }
+  #modal-overlay.show { display: flex; }
+  #modal {
+    background: #fff; border-radius: 16px 16px 0 0; width: 100%;
+    max-height: 90dvh; overflow: hidden; display: flex; flex-direction: column;
+  }
+  #modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid #eee; flex-shrink: 0;
+  }
+  #modal-header button { background: none; border: none; color: #00BCD4; font-size: 16px; }
+  #modal-header span { font-weight: 700; font-size: 16px; }
+  #modal-body { overflow-y: auto; flex: 1; padding: 16px; }
+  #edit-date {
+    border: none; background: #f2f2f7; border-radius: 8px;
+    padding: 8px 12px; font-size: 14px; margin-bottom: 12px; width: 100%;
+    font-family: inherit;
+  }
+  #edit-title {
+    border: none; border-bottom: 1px solid #eee; width: 100%;
+    font-size: 18px; font-weight: 700; padding: 8px 0; margin-bottom: 12px;
+    outline: none; font-family: inherit;
+  }
+  #edit-body {
+    border: none; width: 100%; font-size: 15px; resize: none;
+    outline: none; line-height: 1.7; font-family: inherit; min-height: 160px;
+  }
+  #edit-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  #btn-add-photo {
+    margin-top: 14px; background: #E0F7FA; border: none;
+    border-radius: 8px; padding: 10px 16px; color: #00BCD4;
+    font-weight: 600; font-size: 14px; width: 100%;
+  }
+  #modal-footer { padding: 12px 16px; border-top: 1px solid #eee; flex-shrink: 0; }
+  #btn-delete {
+    width: 100%; padding: 12px; background: #fff0f0; border: none;
+    border-radius: 10px; color: #ff3b30; font-weight: 700; font-size: 15px;
+  }
+
+  /* 設定 */
+  .settings-section {
+    margin: 12px 16px 0; background: #fff; border-radius: 12px; overflow: hidden;
+  }
+  .settings-header {
+    padding: 10px 16px; font-size: 12px; color: #888;
+    font-weight: 600; border-bottom: 1px solid #f0f0f0;
+  }
+  .settings-row {
+    display: flex; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid #f0f0f0;
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-label { font-size: 15px; color: #333; }
+  .settings-value { font-size: 15px; color: #00BCD4; font-weight: 700; }
+  .settings-block { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; }
+  .settings-block:last-child { border-bottom: none; }
+  .settings-block-title { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  .settings-block-desc { font-size: 12px; color: #999; margin-bottom: 10px; line-height: 1.5; }
+  .btn-teal {
+    background: #00BCD4; color: #fff; border: none;
+    border-radius: 10px; padding: 10px 20px;
+    font-weight: 700; font-size: 14px; width: 100%; font-family: inherit;
+  }
+  .btn-gray {
+    background: #f2f2f7; color: #333; border: none;
+    border-radius: 10px; padding: 10px 20px;
+    font-weight: 600; font-size: 14px; width: 100%; font-family: inherit;
+  }
+  #settings-msg {
+    margin: 12px 16px; padding: 12px 16px; border-radius: 10px;
+    font-size: 14px; font-weight: 600; display: none;
+  }
+  .settings-note {
+    margin: 16px; padding: 12px 14px; background: #fff8e1;
+    border-radius: 10px; font-size: 12px; color: #795548; line-height: 1.6;
+  }
+
+  /* ログイン画面 */
+  #login-screen {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 100dvh; gap: 24px; padding: 32px;
+  }
+  #login-screen h1 { font-size: 28px; font-weight: 800; color: #222; }
+  #login-screen p { font-size: 14px; color: #888; text-align: center; line-height: 1.6; }
+  #btn-google-login {
+    display: flex; align-items: center; gap: 12px;
+    background: #fff; border: 1px solid #ddd; border-radius: 12px;
+    padding: 14px 24px; font-size: 16px; font-weight: 600; color: #333;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-family: inherit;
+  }
+  #btn-google-login img { width: 24px; }
+
+  /* ローディング */
+  #loading-screen {
+    display: flex; align-items: center; justify-content: center;
+    height: 100dvh; font-size: 15px; color: #aaa;
+  }
+
+  .empty-msg { text-align: center; color: #bbb; padding: 60px 20px; font-size: 15px; }
+</style>
+</head>
+<body>
+
+<!-- ローディング -->
+<div id="loading-screen">読み込み中...</div>
+
+<!-- ログイン画面 -->
+<div id="login-screen" style="display:none;">
+  <div style="font-size:48px;">📓</div>
+  <h1>日記</h1>
+  <p>Googleアカウントでログインして<br>どこからでも日記を書けます</p>
+  <button id="btn-google-login">
+    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+    Googleでログイン
+  </button>
+</div>
+
+<!-- メインアプリ -->
+<div id="app" style="display:none; height:100dvh; display:none; flex-direction:column;">
+
+  <!-- ヘッダー（通常） -->
+  <div id="header">
+    <span style="font-size:22px;">📓</span>
+    <span id="header-title">日記</span>
+    <button id="btn-search">🔍</button>
+  </div>
+
+  <!-- 検索バー（hidden） -->
+  <div id="search-bar" style="display:none;">
+    <input id="search-input" placeholder="検索..." type="search">
+    <button id="btn-search-cancel">キャンセル</button>
+  </div>
+
+  <!-- コンテンツエリア -->
+  <div id="content"></div>
+
+  <!-- FAB -->
+  <button id="fab">✏️</button>
+
+  <!-- タブバー -->
+  <div id="tab-bar">
+    <button class="tab-btn active" data-tab="list">
+      <span class="icon">☰</span>リスト
+    </button>
+    <button class="tab-btn" data-tab="calendar">
+      <span class="icon">📅</span>カレンダー
+    </button>
+    <button class="tab-btn" data-tab="settings">
+      <span class="icon">⚙️</span>設定
+    </button>
+  </div>
+</div>
+
+<!-- 詳細ビュー -->
+<div id="detail-view" style="display:none; height:100dvh; flex-direction:column;">
+  <div id="detail-header">
+    <button id="btn-detail-back">‹ 戻る</button>
+    <span id="detail-date-label" style="font-weight:700;font-size:14px;color:#888;"></span>
+    <button id="btn-detail-edit">編集</button>
+  </div>
+  <div id="detail-body">
+    <div id="detail-title"></div>
+    <div id="detail-text"></div>
+    <div id="detail-photos"></div>
+  </div>
+</div>
+
+<!-- 編集モーダル -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div id="modal-header">
+      <button id="btn-modal-cancel">キャンセル</button>
+      <span id="modal-title">新しい日記</span>
+      <button id="btn-modal-save">保存</button>
+    </div>
+    <div id="modal-body">
+      <input type="date" id="edit-date">
+      <input type="text" id="edit-title" placeholder="タイトル">
+      <textarea id="edit-body" placeholder="今日はどんな日でしたか？" rows="8"></textarea>
+      <div id="edit-photos"></div>
+      <button id="btn-add-photo">📷 写真を追加</button>
+      <input type="file" id="photo-input" accept="image/*" multiple style="display:none;">
+    </div>
+    <div id="modal-footer" style="display:none;">
+      <button id="btn-delete">削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut }
+  from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+import {
+  getFirestore, collection, addDoc, updateDoc, deleteDoc,
+  doc, query, where, orderBy, onSnapshot, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+
+// ── Firebase設定 ────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAPVavUmjEX6EFK9tNTVlk4ERBxXarg7D8",
+  authDomain: "my-diary-3e90a.firebaseapp.com",
+  projectId: "my-diary-3e90a",
+  storageBucket: "my-diary-3e90a.firebasestorage.app",
+  messagingSenderId: "208879765581",
+  appId: "1:208879765581:web:a0256fd24a083a5bfd3404"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ── 状態 ────────────────────────────────────────────
+const DAYS_JA = ["日","月","火","水","木","金","土"];
+let currentUser = null;
+let entries = [];
+let currentTab = "list";
+let currentView = "main"; // main | detail | search
+let currentEntry = null;
+let editingEntry = null;
+let editPhotos = [];
+let calYm = { y: new Date().getFullYear(), m: new Date().getMonth()+1 };
+let calSelected = today();
+let unsubscribe = null;
+
+function today() {
+  return new Date().toISOString().slice(0,10);
+}
+function parseDateParts(ds) {
+  const [y,m,d] = ds.split("-").map(Number);
+  const dow = new Date(y,m-1,d).getDay();
+  return { y, m, d, dow, dayLabel: DAYS_JA[dow] };
+}
+function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
+function firstDow(y,m){ const d=new Date(y,m-1,1).getDay(); return (d+6)%7; }
+
+// ── 認証 ────────────────────────────────────────────
+document.getElementById("btn-google-login").onclick = async () => {
+  const provider = new GoogleAuthProvider();
+  try { await signInWithPopup(auth, provider); } catch(e) { alert("ログイン失敗: "+e.message); }
+};
+
+onAuthStateChanged(auth, user => {
+  document.getElementById("loading-screen").style.display = "none";
+  if (user) {
+    currentUser = user;
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("app").style.display = "flex";
+    document.getElementById("app").style.flexDirection = "column";
+    startListening();
+    renderTab();
+  } else {
+    currentUser = null;
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+    document.getElementById("app").style.display = "none";
+    document.getElementById("login-screen").style.display = "flex";
+  }
+});
+
+// ── Firestore リアルタイム購読 ───────────────────────
+function startListening() {
+  if (unsubscribe) unsubscribe();
+  const q = query(
+    collection(db, "entries"),
+    where("uid", "==", currentUser.uid),
+    orderBy("date", "desc")
+  );
+  unsubscribe = onSnapshot(q, snap => {
+    entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderTab();
+  });
+}
+
+// ── CRUD ────────────────────────────────────────────
+async function saveEntry(data) {
+  const now = new Date();
+  const time = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+  if (editingEntry && editingEntry.id) {
+    await updateDoc(doc(db,"entries",editingEntry.id), {
+      title: data.title, body: data.body, date: data.date, photos: data.photos
+    });
+  } else {
+    await addDoc(collection(db,"entries"), {
+      uid: currentUser.uid,
+      date: data.date,
+      time: time,
+      title: data.title,
+      body: data.body,
+      photos: data.photos,
+      createdAt: serverTimestamp()
+    });
+  }
+}
+
+async function deleteEntry(id) {
+  await deleteDoc(doc(db,"entries",id));
+}
+
+// ── レンダリング ─────────────────────────────────────
+function renderTab() {
+  if (currentView === "detail") return;
+  if (currentView === "search") { renderSearch(); return; }
+  document.getElementById("header").style.display = "flex";
+  document.getElementById("search-bar").style.display = "none";
+  document.getElementById("tab-bar").style.display = "flex";
+  document.getElementById("fab").style.display = "flex";
+  document.getElementById("detail-view").style.display = "none";
+  document.getElementById("app").style.display = "flex";
+
+  document.querySelectorAll(".tab-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.tab === currentTab);
+  });
+
+  if (currentTab === "list") renderList();
+  else if (currentTab === "calendar") renderCalendar();
+  else if (currentTab === "settings") renderSettings();
+}
+
+// リスト
+function renderList() {
+  const el = document.getElementById("content");
+  const sorted = [...entries].sort((a,b) => b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
+  if (sorted.length === 0) {
+    el.innerHTML = '<div class="empty-msg">日記がありません<br><br>✏️ ボタンで書き始めましょう</div>';
+    return;
+  }
+  const grouped = {};
+  sorted.forEach(e => {
+    const key = e.date.slice(0,7);
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(e);
+  });
+  let html = "";
+  Object.keys(grouped).sort((a,b)=>b.localeCompare(a)).forEach(key => {
+    const [y,m] = key.split("-");
+    html += `<div class="month-header">${y}年${parseInt(m)}月</div>`;
+    grouped[key].forEach(e => { html += entryCardHTML(e); });
+  });
+  el.innerHTML = html;
+  el.querySelectorAll(".entry-card").forEach(card => {
+    card.onclick = () => showDetail(card.dataset.id);
+  });
+}
+
+function entryCardHTML(e) {
+  const {d, dayLabel} = parseDateParts(e.date);
+  const isToday = e.date === today();
+  return `<div class="entry-card" data-id="${e.id}">
+    <div class="date-col">
+      <div class="day-label">${dayLabel}</div>
+      <div class="day-num${isToday?" today":""}">${d}</div>
+      <div class="time-label">${e.time||""}</div>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div class="entry-title">${escHtml(e.title||"（タイトルなし）")}</div>
+      <div class="entry-body">${escHtml(e.body||"")}</div>
+      ${(e.photos||[]).length>0?`<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">${(e.photos||[]).map(p=>`<img src="${p}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;">`).join("")}</div>`:""}
+    </div>
+  </div>`;
+}
+
+// カレンダー
+function renderCalendar() {
+  const el = document.getElementById("content");
+  const recordDates = new Set(entries.map(e=>e.date));
+  const totalDays = daysInMonth(calYm.y, calYm.m);
+  const startDow = firstDow(calYm.y, calYm.m);
+
+  let calHTML = `
+    <div id="cal-nav">
+      <button id="cal-prev">‹</button>
+      <span>${calYm.y}年${calYm.m}月</span>
+      <button id="cal-next">›</button>
+      <button id="cal-today" style="background:none;border:none;color:#00BCD4;font-weight:600;font-size:14px;">今日</button>
+    </div>
+    <div id="cal-dow">
+      ${["月","火","水","木","金","土","日"].map((d,i)=>`<div style="color:${i===5?"#2196F3":i===6?"#f44336":"#888"}">${d}</div>`).join("")}
+    </div>
+    <div id="cal-grid">`;
+
+  for(let i=0;i<startDow;i++) calHTML += `<div></div>`;
+  for(let d=1;d<=totalDays;d++){
+    const ds = `${calYm.y}-${String(calYm.m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const hasRecord = recordDates.has(ds);
+    const isSelected = ds === calSelected;
+    const col = (startDow+d-1)%7;
+    const color = col===5?"#2196F3":col===6?"#f44336":"#222";
+    let cls = "cal-inner";
+    if(hasRecord) cls += " has-record";
+    else if(isSelected) cls += " selected";
+    calHTML += `<div class="cal-cell" data-ds="${ds}">
+      <div class="${cls}" style="${!hasRecord?`color:${color}`:"}">${d}</div>
+    </div>`;
+  }
+  calHTML += `</div>`;
+
+  // 選択日のエントリ
+  const selEntries = entries.filter(e=>e.date===calSelected).sort((a,b)=>b.time.localeCompare(a.time));
+  calHTML += `<div style="background:#f2f2f7;">`;
+  if(calSelected){
+    const {d,dayLabel,y,m} = parseDateParts(calSelected);
+    calHTML += `<div class="month-header">${y}年${m}月${d}日（${dayLabel}）</div>`;
+    if(selEntries.length===0) calHTML += `<div class="empty-msg" style="padding:20px;">この日の記録なし</div>`;
+    else selEntries.forEach(e=>{ calHTML += entryCardHTML(e); });
+  }
+  calHTML += `</div>`;
+
+  el.innerHTML = calHTML;
+
+  document.getElementById("cal-prev").onclick = () => {
+    calYm = calYm.m===1?{y:calYm.y-1,m:12}:{y:calYm.y,m:calYm.m-1};
+    renderCalendar();
+  };
+  document.getElementById("cal-next").onclick = () => {
+    calYm = calYm.m===12?{y:calYm.y+1,m:1}:{y:calYm.y,m:calYm.m+1};
+    renderCalendar();
+  };
+  document.getElementById("cal-today").onclick = () => {
+    const n=new Date(); calYm={y:n.getFullYear(),m:n.getMonth()+1}; calSelected=today(); renderCalendar();
+  };
+  el.querySelectorAll(".cal-cell").forEach(cell=>{
+    cell.onclick=()=>{ calSelected=cell.dataset.ds; renderCalendar(); };
+  });
+  el.querySelectorAll(".entry-card").forEach(card=>{
+    card.onclick=()=>showDetail(card.dataset.id);
+  });
+}
+
+// 設定
+function renderSettings() {
+  const el = document.getElementById("content");
+  const totalChars = entries.reduce((s,e)=>s+(e.title?.length||0)+(e.body?.length||0),0);
+  const totalPhotos = entries.reduce((s,e)=>s+(e.photos?.length||0),0);
+  el.innerHTML = `
+    <div class="settings-section">
+      <div class="settings-header">記録の統計</div>
+      <div class="settings-row"><span class="settings-label">総記録数</span><span class="settings-value">${entries.length}件</span></div>
+      <div class="settings-row"><span class="settings-label">総文字数</span><span class="settings-value">${totalChars.toLocaleString()}文字</span></div>
+      <div class="settings-row"><span class="settings-label">添付写真</span><span class="settings-value">${totalPhotos}枚</span></div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-header">ログイン中</div>
+      <div class="settings-row">
+        <span class="settings-label">${escHtml(currentUser?.email||"")}</span>
+        <button id="btn-logout" style="background:none;border:none;color:#ff3b30;font-weight:600;font-size:14px;cursor:pointer;">ログアウト</button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-header">データ管理</div>
+      <div class="settings-block">
+        <div class="settings-block-title">📥 CSV書き出し</div>
+        <div class="settings-block-desc">全日記をCSVファイルでMacに保存します。<br>ExcelやNumbersで開けます。</div>
+        <button class="btn-teal" id="btn-export">ダウンロード（diary_YYYYMMDD.csv）</button>
+      </div>
+      <div class="settings-block">
+        <div class="settings-block-title">📤 CSVインポート</div>
+        <div class="settings-block-desc">書き出したCSVを読み込んで復元します。<br>既存データには上書きしません（追加のみ）。</div>
+        <button class="btn-gray" id="btn-import-csv">CSVファイルを選択</button>
+        <input type="file" id="csv-input" accept=".csv" style="display:none;">
+      </div>
+    </div>
+    <div id="settings-msg"></div>
+    <div class="settings-note">☁️ <strong>データはFirestoreに自動保存</strong>されています。スマホ・MacBookどちらからでもリアルタイムで同期されます。</div>
+    <div style="height:20px;"></div>
+  `;
+
+  document.getElementById("btn-logout").onclick = () => signOut(auth);
+  document.getElementById("btn-export").onclick = exportCSV;
+  document.getElementById("btn-import-csv").onclick = () => document.getElementById("csv-input").click();
+  document.getElementById("csv-input").onchange = importCSV;
+}
+
+// 検索
+function renderSearch() {
+  document.getElementById("header").style.display = "none";
+  document.getElementById("search-bar").style.display = "flex";
+  document.getElementById("tab-bar").style.display = "none";
+  document.getElementById("fab").style.display = "none";
+  document.getElementById("detail-view").style.display = "none";
+
+  const q = document.getElementById("search-input").value.trim();
+  const results = q ? entries.filter(e=>(e.title||"").includes(q)||(e.body||"").includes(q)) : [];
+  const el = document.getElementById("content");
+  if(!q){ el.innerHTML = '<div class="empty-msg">キーワードを入力してください</div>'; return; }
+  if(results.length===0){ el.innerHTML = '<div class="empty-msg">見つかりません</div>'; return; }
+  el.innerHTML = results.map(e=>entryCardHTML(e)).join("");
+  el.querySelectorAll(".entry-card").forEach(card=>{
+    card.onclick=()=>showDetail(card.dataset.id);
+  });
+}
+
+// 詳細
+function showDetail(id) {
+  currentEntry = entries.find(e=>e.id===id);
+  if(!currentEntry) return;
+  currentView = "detail";
+  const {d,dayLabel,y,m} = parseDateParts(currentEntry.date);
+  document.getElementById("app").style.display = "none";
+  document.getElementById("detail-view").style.display = "flex";
+  document.getElementById("detail-date-label").textContent = `${y}年${m}月${d}日（${dayLabel}）`;
+  document.getElementById("detail-title").textContent = currentEntry.title||"（タイトルなし）";
+  document.getElementById("detail-text").textContent = currentEntry.body||"";
+  const ph = document.getElementById("detail-photos");
+  ph.innerHTML = (currentEntry.photos||[]).map(p=>`<img src="${p}">`).join("");
+}
+
+document.getElementById("btn-detail-back").onclick = () => {
+  currentView = "main";
+  document.getElementById("detail-view").style.display = "none";
+  document.getElementById("app").style.display = "flex";
+  renderTab();
+};
+document.getElementById("btn-detail-edit").onclick = () => openModal(currentEntry);
+
+// ── モーダル ─────────────────────────────────────────
+function openModal(entry) {
+  editingEntry = entry || null;
+  editPhotos = entry ? [...(entry.photos||[])] : [];
+  document.getElementById("modal-title").textContent = entry ? "編集" : "新しい日記";
+  document.getElementById("edit-date").value = entry ? entry.date : today();
+  document.getElementById("edit-title").value = entry ? (entry.title||"") : "";
+  document.getElementById("edit-body").value = entry ? (entry.body||"") : "";
+  document.getElementById("modal-footer").style.display = entry ? "block" : "none";
+  renderEditPhotos();
+  document.getElementById("modal-overlay").classList.add("show");
+}
+
+function renderEditPhotos() {
+  const el = document.getElementById("edit-photos");
+  el.innerHTML = editPhotos.map((p,i)=>`
+    <div style="position:relative;">
+      <img src="${p}" style="width:80px;height:80px;border-radius:8px;object-fit:cover;">
+      <button onclick="removePhoto(${i})" style="position:absolute;top:-6px;right:-6px;background:#ff3b30;border:none;border-radius:50%;color:#fff;width:20px;height:20px;font-size:12px;cursor:pointer;">×</button>
+    </div>`).join("");
+}
+window.removePhoto = (i) => { editPhotos.splice(i,1); renderEditPhotos(); };
+
+document.getElementById("btn-modal-cancel").onclick = () => {
+  document.getElementById("modal-overlay").classList.remove("show");
+};
+document.getElementById("modal-overlay").onclick = (e) => {
+  if(e.target===document.getElementById("modal-overlay"))
+    document.getElementById("modal-overlay").classList.remove("show");
+};
+document.getElementById("btn-modal-save").onclick = async () => {
+  const data = {
+    title: document.getElementById("edit-title").value,
+    body: document.getElementById("edit-body").value,
+    date: document.getElementById("edit-date").value,
+    photos: editPhotos
+  };
+  await saveEntry(data);
+  document.getElementById("modal-overlay").classList.remove("show");
+  if(currentView==="detail"){ currentView="main"; document.getElementById("detail-view").style.display="none"; document.getElementById("app").style.display="flex"; }
+};
+document.getElementById("btn-delete").onclick = async () => {
+  if(!confirm("削除しますか？")) return;
+  await deleteEntry(editingEntry.id);
+  document.getElementById("modal-overlay").classList.remove("show");
+  currentView="main";
+  document.getElementById("detail-view").style.display="none";
+  document.getElementById("app").style.display="flex";
+};
+document.getElementById("btn-add-photo").onclick = () => document.getElementById("photo-input").click();
+document.getElementById("photo-input").onchange = (e) => {
+  Array.from(e.target.files).forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{ editPhotos.push(ev.target.result); renderEditPhotos(); };
+    reader.readAsDataURL(f);
+  });
+  e.target.value="";
+};
+
+// ── タブ切り替え ─────────────────────────────────────
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.onclick = () => { currentTab=btn.dataset.tab; renderTab(); };
+});
+document.getElementById("fab").onclick = () => openModal(null);
+
+// ── 検索 ────────────────────────────────────────────
+document.getElementById("btn-search").onclick = () => {
+  currentView="search";
+  document.getElementById("search-input").value="";
+  renderSearch();
+  setTimeout(()=>document.getElementById("search-input").focus(),100);
+};
+document.getElementById("btn-search-cancel").onclick = () => {
+  currentView="main"; renderTab();
+};
+document.getElementById("search-input").oninput = renderSearch;
+
+// ── CSV書き出し ──────────────────────────────────────
+function exportCSV() {
+  if(entries.length===0){ showSettingsMsg("書き出す日記がありません","warn"); return; }
+  const header = ["ID","日付","時刻","タイトル","本文","写真枚数"];
+  const rows = [...entries].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>[
+    e.id, e.date, e.time||"",
+    `"${(e.title||"").replace(/"/g,'""')}"`,
+    `"${(e.body||"").replace(/\n/g,"\\n").replace(/"/g,'""')}"`,
+    (e.photos||[]).length
+  ]);
+  const csv = [header,...rows].map(r=>r.join(",")).join("\n");
+  const blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const now = new Date();
+  a.href=url; a.download=`diary_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showSettingsMsg(`✅ ${entries.length}件をCSV書き出しました`,"ok");
+}
+
+async function importCSV(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      const text = ev.target.result.replace(/^\uFEFF/,"");
+      const lines = text.split("\n").filter(l=>l.trim());
+      let count = 0;
+      const existing = new Set(entries.map(e=>`${e.date}_${e.title}_${e.body}`));
+      for(let i=1;i<lines.length;i++){
+        const cols = lines[i].match(/(".*?"|[^,]+)(?=,|$)/g)||[];
+        const clean = cols.map(c=>c.replace(/^"|"$/g,"").replace(/""/g,'"').replace(/\\n/g,"\n"));
+        if(clean.length>=5){
+          const key=`${clean[1]}_${clean[3]}_${clean[4]}`;
+          if(!existing.has(key)){
+            await addDoc(collection(db,"entries"),{
+              uid:currentUser.uid, date:clean[1]||today(),
+              time:clean[2]||"00:00", title:clean[3]||"", body:clean[4]||"",
+              photos:[], createdAt:serverTimestamp()
+            });
+            count++;
+          }
+        }
+      }
+      showSettingsMsg(count>0?`✅ ${count}件をインポートしました`:"⚠️ 新規データがありませんでした", count>0?"ok":"warn");
+    } catch { showSettingsMsg("⚠️ 読み込みに失敗しました","warn"); }
+  };
+  reader.readAsText(file,"UTF-8");
+  e.target.value="";
+}
+
+function showSettingsMsg(msg, type) {
+  const el = document.getElementById("settings-msg");
+  if(!el) return;
+  el.textContent=msg; el.style.display="block";
+  el.style.background = type==="ok"?"#e8f5e9":"#fff3e0";
+  el.style.color = type==="ok"?"#2e7d32":"#e65100";
+  setTimeout(()=>{ el.style.display="none"; },4000);
+}
+
+function escHtml(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+</script>
+</body>
+</html>
